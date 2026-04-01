@@ -218,3 +218,4 @@ __marimo__/
 .venv/
 
 data/
+!data/.gitkeep
