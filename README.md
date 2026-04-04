@@ -30,10 +30,12 @@ microstructure-ml/
 | Week | Objective | Status |
 |------|-----------|--------|
 | 1 | Repo scaffolding + environment | Done |
-| 2 | Local L2 book builder + storage | Done |
-| 3 | Snapshot sampler + Parquet storage | Up next |
-| 4 | Features (microprice/imbalance/spread/depth) | Planned |
-| 5 | Join labels and dataset | Planned |
-| 6 | Leakage-resistant validation | Planned |
-| 7 | Baseline models + interpretation | Planned |
-| 8 | Execution simulator + reporting | Planned |
+| 1 | Exchange adapter (Kraken) | Done |
+| 1 | Local L2 book builder + storage | Done |
+| 1 | Correctness validation + resync | Done |
+| 2 | Snapshot sampler + Parquet storage | Up next |
+| 3 | Features (microprice/imbalance/spread/depth) | Planned |
+| 4 | Join labels and dataset | Planned |
+| 5 | Leakage-resistant validation | Planned |
+| 6 | Baseline models + interpretation | Planned |
+| 7 | Execution simulator + reporting | Planned |
