@@ -30,8 +30,8 @@ microstructure-ml/
 | Week | Objective | Status |
 |------|-----------|--------|
 | 1 | Repo scaffolding + environment | Done |
-| 2 | Local L2 book builder + storage | Up next |
-| 3 | Snapshot sampler + Parquet storage | Planned |
+| 2 | Local L2 book builder + storage | Done |
+| 3 | Snapshot sampler + Parquet storage | Up next |
 | 4 | Features (microprice/imbalance/spread/depth) | Planned |
 | 5 | Join labels and dataset | Planned |
 | 6 | Leakage-resistant validation | Planned |
