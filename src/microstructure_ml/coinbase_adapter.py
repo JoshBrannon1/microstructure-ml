@@ -1,4 +1,4 @@
-from websockets.client import connect
+from websockets import connect
 from typing import NamedTuple, Optional
 import json
 
@@ -54,5 +54,6 @@ class CoinbaseAdapter:
         
         while True:
             message = await self.ws.recv()
+            print(message)
             yield self.parse_message(message)
 
