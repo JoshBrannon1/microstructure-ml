@@ -1,5 +1,5 @@
 from microstructure_ml.coinbase_adapter import BookUpdate
-from websockets.client import connect
+from websockets import connect
 import json
 
 class KrakenAdapter:
@@ -13,6 +13,14 @@ class KrakenAdapter:
         self.ws = await connect(self.url)
         subscribe_message = {"method": "subscribe", "params": {"channel": self.channel, "symbol": [self.symbol]}}
         await self.ws.send(json.dumps(subscribe_message))
+    
+    async def reconnect(self):
+        try:
+            await self.ws.close()
+        except Exception:
+            pass #connection could already be broken
+        self.ws = None
+        await self.connect()
     
     def parse_message(self, raw_message):
         message = json.loads(raw_message)
@@ -54,5 +62,4 @@ class KrakenAdapter:
         
         while True:
             message = await self.ws.recv()
-            print(message)
             yield self.parse_message(message)
