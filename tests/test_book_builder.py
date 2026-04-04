@@ -123,10 +123,5 @@ def test_health_check(book):
     book.asks = {101.0: 1.5}
     book.best_ask = 110.0
     book.health_check()
-    print(f"spread_history: {list(book.spread_history)}")
-    print(f"current spread before health check: {book.best_ask - book.best_bid}")
-    print(f"best_bid: {book.best_bid}, best_ask: {book.best_ask}")
-    print(f"bids: {book.bids}")
-    print(f"asks: {book.asks}")
     assert book.is_valid == False
 
