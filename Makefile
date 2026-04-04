@@ -33,4 +33,4 @@ eval:
 	poetry run python -m microstructure_ml.eval
 
 test:
-	.venv/bin/python -m pytest tests/ -v
+	.venv/Scripts/python.exe -m pytest tests/ -v

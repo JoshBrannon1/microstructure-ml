@@ -1,4 +1,5 @@
 from microstructure_ml.coinbase_adapter import BookUpdate
+from collections import deque
 
 class BookBuilder:
     def __init__(self):
@@ -7,6 +8,7 @@ class BookBuilder:
         self.best_bid = None
         self.best_ask = None
         self.is_valid = True
+        self.spread_history = deque(maxlen=10)
 
     def apply_snapshot(self, book_updates):
         self.bids = {}
@@ -51,3 +53,14 @@ class BookBuilder:
         self.best_bid = None
         self.best_ask = None
         self.is_valid = False
+        self.spread_history = deque(maxlen=10)
+    
+    def health_check(self):
+        if self.is_valid and self.best_bid is not None and self.best_ask is not None:
+            current_spread = (self.best_ask - self.best_bid)
+            if len(self.spread_history) > 0:
+                average_spread = sum(self.spread_history) / len(self.spread_history)
+                if current_spread > 2 * average_spread:
+                    print(f"Unusual spread detected: {current_spread} > 2 * {average_spread}")
+                    self.is_valid = False
+            self.spread_history.append(current_spread)
