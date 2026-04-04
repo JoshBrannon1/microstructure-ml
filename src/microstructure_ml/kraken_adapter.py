@@ -39,7 +39,7 @@ class KrakenAdapter:
             for ask in ask_list:
                 book_updates.append(BookUpdate(side="ask", price=float(ask["price"]), size=float(ask["qty"]), time=message["data"][0]["timestamp"]))
             
-            return book_updates
+            return book_updates, message["type"]
         
         elif message["type"] == "update":
             bid_list = message["data"][0]["bids"]
@@ -50,7 +50,7 @@ class KrakenAdapter:
             for ask in ask_list:
                 book_updates.append(BookUpdate(side = "ask", price=float(ask["price"]), size=float(ask["qty"]), time = message["data"][0]["timestamp"]))
             
-            return book_updates
+            return book_updates, message["type"]
         
         #Unrecognized messages are intentionally ignored
         else:
@@ -62,4 +62,6 @@ class KrakenAdapter:
         
         while True:
             message = await self.ws.recv()
-            yield self.parse_message(message)
+            result = self.parse_message(message)
+            if result is not None:
+                yield result

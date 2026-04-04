@@ -15,7 +15,7 @@ install:
 	poetry install
 
 collect:
-	poetry run python -m microstructure_ml.collect
+	.venv/Scripts/python.exe -m microstructure_ml.collector
 
 snapshots:
 	poetry run python -m microstructure_ml.snapshots
