@@ -33,8 +33,8 @@ microstructure-ml/
 | 1 | Exchange adapter (Kraken) | Done |
 | 1 | Local L2 book builder + storage | Done |
 | 1 | Correctness validation + resync | Done |
-| 2 | Snapshot sampler + Parquet storage | Up next |
-| 3 | Features (microprice/imbalance/spread/depth) | Planned |
+| 2 | Snapshot sampler + Parquet storage | Done |
+| 3 | Features (microprice/imbalance/spread/depth) | Up next |
 | 4 | Join labels and dataset | Planned |
 | 5 | Leakage-resistant validation | Planned |
 | 6 | Baseline models + interpretation | Planned |
