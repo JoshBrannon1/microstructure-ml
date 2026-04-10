@@ -29,8 +29,12 @@ We form flat dictionaries with the snapshot sampler because it allows the data t
 There are some insights about the book that must be more rigid than others. The primary one is that the best ask > best bid at any level. Not meeting this condition is impossible in the market and indicates a broken book. If this invariant condition is not met, then we reset the book and connection. By contrast, soft signals such as spread do not break the book. A very wide spread is a plausible event in the real market and can be valuable for training later on, so it should not render the book invalid.
 
 # Known Limitations & Future Work
--Right now, if WebSocket connection drops, we attempt reconnection at a fixed rate instead of exponentially backing off. This could cause a massive amount of connection messages to be sent in the case of an outage, which could overwhelm the system. Also, we don't have a limit for the amount of reconnection attempts. 
--We use print() statements to locate errors or confirm functionality instead of properly logging them. This will need to be revisited. 
--We currently only collect from one exchange and product. If we wanted to add a second, we would need to instantiate a new book builder object. And the error would flow upwards meaning more architectural changes would be needed; the collector could own a list or dictionary of (adapter, book_builder, buffer) tuples, with one per product, rather than just owning one. 
--The current snapshot cadence is at a fixed rate specified in the sample_loop argument. Having a dynamic snapshot rate during high volatility market events could capture more meaningful data.
--Classifying spread as anomalous when it exceeds a certain threshold could be valuable for feature designing in the model. But right now, we don't have enough data to make an accurate prediction of what qualifies a spread as anomalous. Therefore, we can implement this later on once more data has been collected. 
+* Right now, if WebSocket connection drops, we attempt reconnection at a fixed rate instead of exponentially backing off. This could cause a massive amount of connection messages to be sent in the case of an outage, which could overwhelm the system. Also, we don't have a limit for the amount of reconnection attempts.
+
+* We use print() statements to locate errors or confirm functionality instead of properly logging them. This will need to be revisited. 
+
+* We currently only collect from one exchange and product. If we wanted to add a second, we would need to instantiate a new book builder object. And the error would flow upwards meaning more architectural changes would be needed; the collector could own a list or dictionary of (adapter, book_builder, buffer) tuples, with one per product, rather than just owning one. 
+
+* The current snapshot cadence is at a fixed rate specified in the sample_loop argument. Having a dynamic snapshot rate during high volatility market events could capture more meaningful data.
+
+* Classifying spread as anomalous when it exceeds a certain threshold could be valuable for feature designing in the model. But right now, we don't have enough data to make an accurate prediction of what qualifies a spread as anomalous. Therefore, we can implement this later on once more data has been collected. 
