@@ -1,22 +1,36 @@
-# Data Adapter
+# System Overview
+In its current state, the system is designed to create a connection to real time L2 order book data, then access and store that data as a Parquet. This data is to be collected for microstructure features for machine learning modeling.
 
-## Purpose
-The adapter serves as a way to gain real order book snapshot data from the Coinbase Level2 Channel and translate that data into a form that is useable by the book builder. We must build an adapter that handles incoming message sequences and prepares that data to be useable for building books, which requires identical inputs regardless of where the data comes from.
+# Data Flow
+WebSocket connection → Adapter → BookBuilder → Collector → SnapshotSampler → SnapshotWriter → Parquet
 
-## Message Flow
-Messages over WebSocket follow the following order: on the user end, a connection is made, then a subscription is sent. Next, Coinbase sends a snapshot that can be used to initialize the order book. Then Coinbase sends update messages containing information that can be used to update the data. The adapter takes this data and translates it into the form expected by the BookUpdate class. Once BookUpdate objects are assembled, they are passed into the BookBuilder class (which requires a consistent input type).
+# Component Design
+## Adapter Layer
+The adapter serves as a way to gain order book snapshots from real time L2 order book data via WebSocket feeds from Coinbase/Kraken/etc and translate that data into a form that is useable by the book builder. We must build modular adapters that handle incoming message sequences and prepare that data to be useable for building books, which requires an identical form regardless of where the data comes from.
+## Book Builder
+The book builder takes the raw adapter messages and translates them into a cleaner usable form. It recognizes the type of message from the adapter and applies the necessary logic to maintain a dictionary of the best bids and the best asks (with the key being the bid or ask price and the value being the quantity available at that price). The book builder also stores the best bid price and the best ask price as well as a BookStatus (which is a NamedTuple) that stores information regarding the validity of the book (the book is invalid if an error occurs, such as a disconnection or an impossible entry scuh as bid > ask) as well as the reason, if applicable, for the validity state.
+## Snapshot Sampler
+The snapshot sampler has one method: take_snapshot. This method takes the top bid/ask entries of the current book by sorting the book and slicing the lowest 10 numbers for asks and the highest 10 numbers for bids. It then forms a flat dictionary (which is helpful for storage later on). The keys in this dictionary are strings storing a reference index (ranging from 1 to the specificized depth of the snapshot) with the order of the keys being bid price, bid size, ask price, and ask size. The value for each of these 4 key types are the respective value based on the book. If the specified number of levels for the depth are not available, the values are stored as None. Lastly, the dictionary stores the time, product (e.g. BTC-USD), and the exchange (e.g. Kraken). This makes for a total of n * 4 + 3 keys (where n is the desired depth of the snapshot).
+## Snapshot Writer
+The snapshot writer also has one method: write_snapshots. This method first takes in a list of flat dictionaries formed by the snapshot sampler and arranges them into a table (where each row represents one flat dictionary). It then writes the data as a parquet to the necessary folder. See the note about the reasoning behind using parquet storage under Key Design Decisions below. The path that this data is written to ends in the date, meaning that data for each date is within its own file. This will allow for quick filtering and organization during later operations. 
+## Collector
+The collector serves as the wiring between the above components to actually grab data and store it. It has two methods. The first one is the sample loop, which waits until the book is in a valid state (reconnecting if not valid), then appends valid snapshots to a buffer list that is then fed to the snapshot writer. Snapshot sampling occurs on a regular specified interval. Afterwards, the buffer is cleared for the next iteration. The time between writes is adjustable, but larger times are more efficient since writing small files frequently is more expensive than writing larger files less frequently. The second method in the collector is the run method, which creates a WebSocket connection, listens for messages from the data feed, and applies the information in the message to the book via book_builder.apply_update/apply_snapshot. This run method also calls the above described sample loop method. If, during the run, the book is found to be invalid, the book is reset and a fresh connection is made with WebSocket. Calling the run method effectively brings together each component and routes data from WebSockets to the Parquet. 
 
-## Internal Representation
-The BookUpdate class is setup using a NamedTuple, which is immutable to prevent accidental updates. The attributes of this class are the following:
-```
-side (str) - whether the update is on the bid or ask side of the book
-price (float) - the price level this update applies to
-size (float) - the current quantity available at the price level; size 0 indicates the level should be removed
-time (Optional[str]) - the current time of the order book snapshot, recorded by Coinbase
-```
+# Key Design Decisions
+## WebSocket and Asyncio
+Push-based streaming is used (via WebSocket) because it allows for a consistent connection to be created, which sends data the moment anything changes. A request for the data doesn't need to be made beyond the initial subscription request; data is automatically sent. For an order book with hundreds of updates per second, we would miss most of these updates with a fixed polling rate. In contrast, using WebSocket lets us get every update as it happens and we can poll at our desired rate afterwards. We use Asyncio because the program has multiple responsibilities to fulfill at each moment: listening for WebSocket messages, sampling the book frequently, and writing the disk periodically. Asyncio handles this through single-threaded cooperative concurrency. Rather than using multiple threads, the program switches between tasks at await points. When one task is waiting, (for example, waiting for the next WebSocket message), a different task can run instead of halting the entire program. This means that sampling and message processing can occur concurrently without wasting time waiting. 
+## Kraken over Coinbase
+The adapter for Coinbase was the first adapter designed. But Coinbase requires authentication for connection access so I switched to Kraken which does not require authentication. This change highlights the modularity of the adapter; we can adapt data from any valid source as long as we parse it into the correct form expected by the book builder. If Kraken stops working, we only need to write a new adapter and everything else will continue to function properly.
+## Parquet over CSV
+We use parquet storage because it stores columnar data together on the disk so that reading the data only requires the disk head to touch one region (improving IO time for calculations later). Additionally, parquet compresses columnar data very efficiently since similar values are stored together. Parquet also stores type information. CSV is limited in these areas, and while csv is human readable, it is not as effective for this use case. The date being the last path folder for the storage of these files allows query engines to skip entire directories without reading them; data from each date can easily be independently accessed instead of searching through one massive file. 
+## Flat Dictionary Schema
+We form flat dictionaries with the snapshot sampler because it allows the data to be highly organized. Each column, once stored as parquet, will represent a consistent value. For example, the values of the keys in the first column represent the top n bid prices. In practice this will make operations such as finding the mean of data in a certain level easier to write. 
+## Invariants and soft signals
+There are some insights about the book that must be more rigid than others. The primary one is that the best ask > best bid at any level. Not meeting this condition is impossible in the market and indicates a broken book. If this invariant condition is not met, then we reset the book and connection. By contrast, soft signals such as spread do not break the book. A very wide spread is a plausible event in the real market and can be valuable for training later on, so it should not render the book invalid.
 
-## Message Routing
-The adapter will handle messages including snapshots and l2updates. Messages that are unrecognized are ignored. We don't want to raise an error in this case because we don't want to halt the program; we want it to continue receiving the messages it is designed for. 
-
-## Technology Choices
-I am using the websockets library because it is built around the Asynchronous paradigm so that while a task waits for an external input, the rest of the code can continue running. This idea is powered by the asyncio library. This is important when waiting for update messages from Coinbase because we don't want to stall the rest of the code while waiting for a response. 
+# Known Limitations & Future Work
+-Right now, if WebSocket connection drops, we attempt reconnection at a fixed rate instead of exponentially backing off. This could cause a massive amount of connection messages to be sent in the case of an outage, which could overwhelm the system. Also, we don't have a limit for the amount of reconnection attempts. 
+-We use print() statements to locate errors or confirm functionality instead of properly logging them. This will need to be revisited. 
+-We currently only collect from one exchange and product. If we wanted to add a second, we would need to instantiate a new book builder object. And the error would flow upwards meaning more architectural changes would be needed; the collector could own a list or dictionary of (adapter, book_builder, buffer) tuples, with one per product, rather than just owning one. 
+-The current snapshot cadence is at a fixed rate specified in the sample_loop argument. Having a dynamic snapshot rate during high volatility market events could capture more meaningful data.
+-Classifying spread as anomalous when it exceeds a certain threshold could be valuable for feature designing in the model. But right now, we don't have enough data to make an accurate prediction of what qualifies a spread as anomalous. Therefore, we can implement this later on once more data has been collected. 

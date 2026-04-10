@@ -219,3 +219,6 @@ __marimo__/
 
 data/
 !data/.gitkeep
+
+*.save
+tmp_path/
