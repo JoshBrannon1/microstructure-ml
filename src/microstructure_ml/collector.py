@@ -40,8 +40,8 @@ class Collector:
         while True:
             snapshot = take_snapshot(self.book_builder, datetime.datetime.now(), product, exchange, num_levels)
             self.buffer.append(snapshot)
-            if (datetime.datetime.now() - start_time).total_seconds() > 10: #write to disk every 10 minutes
-                write_snapshots(self.buffer, product, exchange, "/home/josh/microstructure-ml/data")
+            if (datetime.datetime.now() - start_time).total_seconds() > 600: #write to disk every 10 minutes
+                write_snapshots(self.buffer, product, exchange, "data")
                 self.buffer = []
                 start_time = datetime.datetime.now()
             await asyncio.sleep(sample_interval)
