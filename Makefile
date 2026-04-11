@@ -15,7 +15,7 @@ install:
 	poetry install
 
 collect:
-	.venv/Scripts/python.exe -m microstructure_ml.collector
+	.venv/bin/python -m microstructure_ml.collector
 
 snapshots:
 	poetry run python -m microstructure_ml.snapshots
@@ -33,4 +33,4 @@ eval:
 	poetry run python -m microstructure_ml.eval
 
 test:
-	.venv/Scripts/python.exe -m pytest tests/ -v
+	.venv/bin/python -m pytest tests/ -v
