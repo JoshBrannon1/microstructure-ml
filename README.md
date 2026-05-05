@@ -34,8 +34,8 @@ microstructure-ml/
 | 1 | Local L2 book builder + storage | Done |
 | 1 | Correctness validation + resync | Done |
 | 2 | Snapshot sampler + Parquet storage | Done |
-| 3 | Features (microprice/imbalance/spread/depth) | Up next |
-| 4 | Join labels and dataset | Planned |
+| 3 | Features (microprice/imbalance/spread/depth) | Done |
+| 4 | Join labels and dataset | Up next |
 | 5 | Leakage-resistant validation | Planned |
 | 6 | Baseline models + interpretation | Planned |
 | 7 | Execution simulator + reporting | Planned |
