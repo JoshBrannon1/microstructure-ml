@@ -30,7 +30,7 @@ def test_correct_shape(book, tmp_path):
     snapshot2 = take_snapshot(book, "2024-01-01T00:10:00Z", "BTC-USD", "Kraken", 2)
     writer = write_snapshots([snapshot1, snapshot2], "BTC/USD", "Kraken", tmp_path)
     date_str = datetime.now().strftime("%Y-%m-%d")
-    expected_path = Path(tmp_path) / f"exchange=Kraken" / f"product=BTC-USD" / f"date={date_str}"
+    expected_path = Path(tmp_path) / "raw" / f"exchange=Kraken" / f"product=BTC-USD" / f"date={date_str}"
     assert expected_path.exists()
     assert any(expected_path.iterdir())
     assert len(list(expected_path.iterdir())) == 1
