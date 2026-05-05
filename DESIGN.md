@@ -1,8 +1,8 @@
 # System Overview
-In its current state, the system is designed to create a connection to real time L2 order book data, then access and store that data as a Parquet. This data is to be collected for microstructure features for machine learning modeling.
+In its current state, the system is designed to create a connection to real time L2 order book data, then access and store that data as a Parquet. This data is to be collected for microstructure features for machine learning modeling. After collection and storage, the data may be routed through a feature pipeline to compute features and attatch them to the data. It is then stored again as parquet in a fresh directory. 
 
 # Data Flow
-WebSocket connection → Adapter → BookBuilder → Collector → SnapshotSampler → SnapshotWriter → Parquet
+WebSocket connection → Adapter → BookBuilder → Collector → SnapshotSampler → SnapshotWriter → Parquet → Feature Pipeline → Parquet
 
 # Component Design
 ## Adapter Layer
@@ -15,6 +15,8 @@ The snapshot sampler has one method: take_snapshot. This method takes the top bi
 The snapshot writer also has one method: write_snapshots. This method first takes in a list of flat dictionaries formed by the snapshot sampler and arranges them into a table (where each row represents one flat dictionary). It then writes the data as a parquet to the necessary folder. See the note about the reasoning behind using parquet storage under Key Design Decisions below. The path that this data is written to ends in the date, meaning that data for each date is within its own file. This will allow for quick filtering and organization during later operations. 
 ## Collector
 The collector serves as the wiring between the above components to actually grab data and store it. It has two methods. The first one is the sample loop, which waits until the book is in a valid state (reconnecting if not valid), then appends valid snapshots to a buffer list that is then fed to the snapshot writer. Snapshot sampling occurs on a regular specified interval. Afterwards, the buffer is cleared for the next iteration. The time between writes is adjustable, but larger times are more efficient since writing small files frequently is more expensive than writing larger files less frequently. The second method in the collector is the run method, which creates a WebSocket connection, listens for messages from the data feed, and applies the information in the message to the book via book_builder.apply_update/apply_snapshot. This run method also calls the above described sample loop method. If, during the run, the book is found to be invalid, the book is reset and a fresh connection is made with WebSocket. Calling the run method effectively brings together each component and routes data from WebSockets to the Parquet. 
+## Feature Pipeline
+The feature pipeline takes the raw parquet data that has been written from the collector, translates it into a polars dataframe, and performs feature calculations on the dataframe before parsing back to parquet and writing the modified data into a specified (or default if none given) directory. There are 4 default featuers: mid price, spread, top level imbalance, and microprice. There are currently 2 optional features: depth imbalance (the size imbalance across all 10 levels), and rolling spread. Both have been written but I am currently only using depth imbalance; I will return to rolling spread after training and evaluation.
 
 # Key Design Decisions
 ## WebSocket and Asyncio
@@ -27,14 +29,24 @@ We use parquet storage because it stores columnar data together on the disk so t
 We form flat dictionaries with the snapshot sampler because it allows the data to be highly organized. Each column, once stored as parquet, will represent a consistent value. For example, the values of the keys in the first column represent the top n bid prices. In practice this will make operations such as finding the mean of data in a certain level easier to write. 
 ## Invariants and soft signals
 There are some insights about the book that must be more rigid than others. The primary one is that the best ask > best bid at any level. Not meeting this condition is impossible in the market and indicates a broken book. If this invariant condition is not met, then we reset the book and connection. By contrast, soft signals such as spread do not break the book. A very wide spread is a plausible event in the real market and can be valuable for training later on, so it should not render the book invalid.
+## Features/Polars
+Features are currently calculated with the Polars libaray for Python. Polars expressions operate across all rows at once; they are column-wise operations. Columnnar operations avoid python loops entirely and are optimized in Rust under the hood. 
+## Hive style partitioning
+Hive style partitioning uses a key value pair structure for naming directories. An example path to where parquet files live is: ~/microstructure-ml/data/features/exchange=Kraken/product=BTC-USD/date=2026-04-11. As you can see, everything beyond features has a label. For coding purposes, this makes things easy because we can filter down to a desired level based on the key naming scheme. This will be helpful if file structure ever changes or grows; a specific level will still be easily accessible since it contains an identifying key. 
 
 # Known Limitations & Future Work
 * Right now, if WebSocket connection drops, we attempt reconnection at a fixed rate instead of exponentially backing off. This could cause a massive amount of connection messages to be sent in the case of an outage, which could overwhelm the system. Also, we don't have a limit for the amount of reconnection attempts.
 
-* We use print() statements to locate errors or confirm functionality instead of properly logging them. This will need to be revisited. 
+* We use print() statements to locate errors or confirm functionality instead of properly logging them. This will need to be revisited. These print statements do not store or write anything - the errors are lost unless manually noted. This needs to be reworked with proper logging. 
 
 * We currently only collect from one exchange and product. If we wanted to add a second, we would need to instantiate a new book builder object. And the error would flow upwards meaning more architectural changes would be needed; the collector could own a list or dictionary of (adapter, book_builder, buffer) tuples, with one per product, rather than just owning one. 
 
 * The current snapshot cadence is at a fixed rate specified in the sample_loop argument. Having a dynamic snapshot rate during high volatility market events could capture more meaningful data.
 
-* Classifying spread as anomalous when it exceeds a certain threshold could be valuable for feature designing in the model. But right now, we don't have enough data to make an accurate prediction of what qualifies a spread as anomalous. Therefore, we can implement this later on once more data has been collected. 
+* Classifying spread as anomalous when it exceeds a certain threshold could be valuable for feature designing in the model. But right now, we don't have enough data to make an accurate prediction of what qualifies a spread as anomalous. Therefore, we can implement this later on once more data has been collected.
+
+* The rolling spread feature is currently set up to calculate the spread over a 60 second window. Before the 60 second mark has been reached within a certain file though, there physcially isn't enough data to have a full 60 second window. There are two approaches one might take for this: the simpler one is to use a smaller window for the average, which starts at 1 second and grows by 1 second until 60 is reached, at which point the full window size can be used and slid. The second and more complex approach is the consider the previous file and use its data to maintain a full 60 second window that bridges the two files together. I used the first approach. This could impact performance later and may need to be reworked.
+
+* Error handling within the feature pipeline is not fully fledged. Any type of error may be caught with the default Python exception, and printed. But this doesn't actually point to which file created the problem and why it failed. And these errors are not logged anywhere for future reference. 
+
+* Currently, if the feature pipeline is ran against the same data with the same output path given, the old data will be overwritten. Therefore, if there was a need to compute different features across the same data, a unique path would need to be specified. 
