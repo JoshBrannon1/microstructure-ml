@@ -14,7 +14,7 @@ help:
 	@echo "  test       - Run tests"
 
 install:
-	 python3 -m poetry install
+	 poetry install
 
 collect:
 	poetry run python -m microstructure_ml.collector
@@ -35,4 +35,4 @@ eval:
 	poetry run python -m microstructure_ml.eval
 
 test:
-	poetry run python -m microstructure_ml.feature_pipeline --input $(INPUT) --output $(OUTPUT) -m pytest tests/ -v
+	poetry run python -m pytest tests/ -v
