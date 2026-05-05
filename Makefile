@@ -1,5 +1,7 @@
 .PHONY: install collect snapshots features dataset train eval test
 
+OUTPUT ?= data/features
+
 help:
 	@echo "Available targets:"
 	@echo "  install    - Install dependencies"
@@ -12,16 +14,16 @@ help:
 	@echo "  test       - Run tests"
 
 install:
-	poetry install
+	 python3 -m poetry install
 
 collect:
-	.venv/bin/python -m microstructure_ml.collector
+	poetry run python -m microstructure_ml.collector
 
 snapshots:
 	poetry run python -m microstructure_ml.snapshots
 
 features:
-	poetry run python -m microstructure_ml.features
+	poetry run python -m microstructure_ml.feature_pipeline --input $(INPUT) --output $(OUTPUT)
 
 dataset:
 	poetry run python -m microstructure_ml.dataset
@@ -33,4 +35,4 @@ eval:
 	poetry run python -m microstructure_ml.eval
 
 test:
-	.venv/bin/python -m pytest tests/ -v
+	poetry run python -m microstructure_ml.feature_pipeline --input $(INPUT) --output $(OUTPUT) -m pytest tests/ -v
