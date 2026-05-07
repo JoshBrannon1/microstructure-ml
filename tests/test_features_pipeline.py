@@ -77,7 +77,7 @@ def test_rolling_spread_calculation():
     result = df.with_columns([rolling_spread(3)])
     assert result["rolling_spread_3"].to_list() == pytest.approx([1.0, 1.75, 2.166666667, 3.0], rel=1e-4)
 
-def test_none_handling_in_calculations():
+def test_none_handling_in_feature_calculations():
     df = pl.DataFrame({
         "bid_price_1": [100.0, None],
         "bid_size_1": [1.0, None],

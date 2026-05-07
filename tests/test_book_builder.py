@@ -60,20 +60,6 @@ def test_apply_update_ignored_when_invalid(book):
     assert book.best_ask == None
     assert book.status.is_valid == False
 
-def test_best_price_validation(book):
-    snapshot_updates = [
-        BookUpdate(side="bid", price=100.0, size=1.0, time=None),
-        BookUpdate(side="ask", price=101.0, size=1.5, time=None)
-    ]
-    book.apply_snapshot(snapshot_updates)
-
-    # This update should raise a ValueError because it would make the best bid greater than or equal to the best ask
-    invalid_update = [
-        BookUpdate(side="bid", price=102.0, size=1.0, time=None)
-    ]
-    book.apply_update(invalid_update)
-    assert book.status.is_valid == False
-
 def test_size_zero(book):
     snapshot_updates = [
         BookUpdate(side="bid", price=100.0, size=1.0, time=None),
@@ -105,4 +91,13 @@ def test_reset(book):
     assert book.best_ask is None
     assert book.status.is_valid == False
     assert len(book.spread_history) == 0
+
+def test_crossed_book(book):
+    snapshot_updates = [
+        BookUpdate(side="bid", price=104.0, size=1.0, time=None),
+        BookUpdate(side="ask", price=100.0, size=1.5, time=None)
+    ]
+    book.apply_snapshot(snapshot_updates)
+    assert book.status.is_crossed is True
+
 

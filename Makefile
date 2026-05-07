@@ -1,6 +1,8 @@
 .PHONY: install collect snapshots features dataset train eval test
 
-OUTPUT ?= data/features
+FEATURES_OUTPUT ?= data/features
+LABELS_OUTPUT ?= data/labels
+INTERVALS ?= 5 10 30
 
 help:
 	@echo "Available targets:"
@@ -23,7 +25,10 @@ snapshots:
 	poetry run python -m microstructure_ml.snapshots
 
 features:
-	poetry run python -m microstructure_ml.feature_pipeline --input $(INPUT) --output $(OUTPUT)
+	poetry run python -m microstructure_ml.feature_pipeline --input $(INPUT) --output $(FEATURES_OUTPUT)
+
+labels:
+	poetry run python -m microstructure_ml.label_builder --input $(INPUT) --output $(LABELS_OUTPUT) --intervals $(INTERVALS)
 
 dataset:
 	poetry run python -m microstructure_ml.dataset

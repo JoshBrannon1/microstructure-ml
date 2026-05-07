@@ -6,6 +6,7 @@ class BookStatus(NamedTuple):
     is_valid: bool
     reason: Optional[str]
     is_anomalous_spread: bool
+    is_crossed: bool
 
 class BookBuilder:
     def __init__(self):
@@ -13,7 +14,7 @@ class BookBuilder:
         self.asks = {}
         self.best_bid = None
         self.best_ask = None
-        self.status = BookStatus(is_valid = False, reason = "Book not initialized, waiting for first snapshot", is_anomalous_spread = False)
+        self.status = BookStatus(is_valid = False, reason = "Book not initialized, waiting for first snapshot", is_anomalous_spread = False, is_crossed=False)
         self.spread_history = deque(maxlen=10)
         self.min_spread_observations = 20
 
@@ -26,7 +27,7 @@ class BookBuilder:
             elif update.side == "ask":
                 self.asks[update.price] = update.size
         
-        self.status = BookStatus(is_valid = True, reason = None, is_anomalous_spread = False)
+        self.status = BookStatus(is_valid = True, reason = None, is_anomalous_spread = False, is_crossed=False)
         self.update_best_prices()
         self.spread_history.append(self.best_ask - self.best_bid) if self.best_bid is not None and self.best_ask is not None else None
 
@@ -52,16 +53,21 @@ class BookBuilder:
     def update_best_prices(self):
         self.best_bid = max(self.bids.keys()) if self.bids else None
         self.best_ask = min(self.asks.keys()) if self.asks else None
-        if self.best_bid is not None and self.best_ask is not None and self.best_bid >= self.best_ask:
-            self.status = BookStatus(is_valid = False, reason = f"Invariant violated: best_bid={self.best_bid} >= best_ask={self.best_ask}", is_anomalous_spread = False)
+        if self.best_bid is None or self.best_ask is None:
+            self.status = BookStatus(is_valid = False, reason = "Empty side", is_anomalous_spread = False, is_crossed = False)
             print(self.status.reason)
+        elif self.best_bid >= self.best_ask:
+            self.status = BookStatus(is_valid = True, reason = f"Invariant violated: best_bid={self.best_bid} >= best_ask={self.best_ask}", is_anomalous_spread = False, is_crossed=True)
+            print(self.status.reason)
+        else:
+            self.status = BookStatus(is_valid = True, reason = None, is_anomalous_spread = False, is_crossed=False)
     
     def reset(self):
         self.bids = {}
         self.asks = {}
         self.best_bid = None
         self.best_ask = None
-        self.status = BookStatus(is_valid = False, reason = "Book reset, waiting for next snapshot", is_anomalous_spread = False)
+        self.status = BookStatus(is_valid = False, reason = "Book reset, waiting for next snapshot", is_anomalous_spread = False, is_crossed=False)
         self.spread_history = deque(maxlen=10)
     
     def health_check(self):
@@ -73,9 +79,9 @@ class BookBuilder:
                 average_spread = sum(self.spread_history) / len(self.spread_history)
                 if current_spread > 2 * average_spread:
                     print(f"Unusual spread detected: {current_spread} > 2 * {average_spread}")
-                    self.status = BookStatus(is_valid = True, reason = f"Unusual spread detected: {current_spread} > 2 * {average_spread}", is_anomalous_spread = True)
+                    self.status = BookStatus(is_valid = True, reason = f"Unusual spread detected: {current_spread} > 2 * {average_spread}", is_anomalous_spread = True, is_crossed=False)
                 else:
-                    self.status = BookStatus(is_valid = True, reason = None, is_anomalous_spread = False)
+                    self.status = BookStatus(is_valid = True, reason = None, is_anomalous_spread = False,is_crossed=False)
                 
                 if not self.status.is_anomalous_spread:
                     self.spread_history.append(current_spread)
