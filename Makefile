@@ -1,8 +1,14 @@
-.PHONY: install collect snapshots features dataset train eval test
+.PHONY: install collect snapshots features labels dataset train eval test
 
 FEATURES_OUTPUT ?= data/features
 LABELS_OUTPUT ?= data/labels
 INTERVALS ?= 5 10 30
+VAL_DAYS ?= 3
+STEP_DAYS ?= 1
+TEST_DAYS ?= 5
+KEEP_COLUMNS ?= mid_price spread imbalance microprice depth_imbalance
+LABEL ?= return_5s
+MODEL_CLASS ?= linear
 
 help:
 	@echo "Available targets:"
@@ -16,7 +22,7 @@ help:
 	@echo "  test       - Run tests"
 
 install:
-	 poetry install
+	poetry install
 
 collect:
 	poetry run python -m microstructure_ml.collector
@@ -34,7 +40,7 @@ dataset:
 	poetry run python -m microstructure_ml.dataset
 
 train:
-	poetry run python -m microstructure_ml.train
+	poetry run python -m microstructure_ml.training_pipeline --input $(INPUT) --val_days $(VAL_DAYS) --step_days $(STEP_DAYS) --test_days $(TEST_DAYS) --keep_columns $(KEEP_COLUMNS) --label $(LABEL) --model_class $(MODEL_CLASS)
 
 eval:
 	poetry run python -m microstructure_ml.eval
