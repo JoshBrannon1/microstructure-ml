@@ -5,9 +5,9 @@ LABELS_OUTPUT ?= data/labels
 INTERVALS ?= 5 10 30
 VAL_DAYS ?= 3
 STEP_DAYS ?= 1
-TEST_DAYS ?= 5
+TEST_DAYS ?= 7
 KEEP_COLUMNS ?= mid_price spread imbalance microprice depth_imbalance
-LABEL ?= return_5s
+LABEL ?= microprice_dev_5s
 MODEL_CLASS ?= linear
 
 help:
@@ -35,9 +35,6 @@ features:
 
 labels:
 	poetry run python -m microstructure_ml.label_builder --input $(INPUT) --output $(LABELS_OUTPUT) --intervals $(INTERVALS)
-
-dataset:
-	poetry run python -m microstructure_ml.dataset
 
 train:
 	poetry run python -m microstructure_ml.training_pipeline --input $(INPUT) --val_days $(VAL_DAYS) --step_days $(STEP_DAYS) --test_days $(TEST_DAYS) --keep_columns $(KEEP_COLUMNS) --label $(LABEL) --model_class $(MODEL_CLASS)
