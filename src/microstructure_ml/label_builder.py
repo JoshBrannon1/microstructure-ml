@@ -3,9 +3,15 @@ from pathlib import Path
 import argparse
 
 def compute_labels(df: pl.DataFrame, intervals: list[int]) -> pl.DataFrame:
-    columns = [((pl.col("mid_price").shift(-interval) - pl.col("mid_price")) / pl.col("mid_price")).alias(f"return_{interval}s") for interval in intervals]
+    columns = [
+        # return labels
+        ((pl.col("mid_price").shift(-interval) - pl.col("mid_price")) / pl.col("mid_price")).alias(f"return_{interval}s") for interval in intervals
+    ] + [
+        # microprice deviation labels
+        (pl.col("microprice").shift(-interval) - pl.col("mid_price").shift(-interval)).alias(f"microprice_dev_{interval}s") for interval in intervals
+    ]
     df = df.with_columns(columns)
-    return df
+    return df 
 
 def process_file(input_path: Path, input_base: Path, output_base: Path, intervals: list[int] | None = None) -> None:
     if intervals is None: 
