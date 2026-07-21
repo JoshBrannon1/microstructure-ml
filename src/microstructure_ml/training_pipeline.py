@@ -70,4 +70,4 @@ if __name__ ==  "__main__":
     parser.add_argument("--label", type=str, required=True, help="Column to use as label")
     parser.add_argument("--model_class", type=str, choices=["linear", "rf"], default="linear", help="Model class to use for training")
     args = parser.parse_args()
-    entry_point(args.input_base, args.val_days, args.step_days, args.test_days, args.keep_columns, args.label, args.model_class)
+    entry_point(args.input, args.val_days, args.step_days, args.test_days, args.keep_columns, args.label, args.model_class)
